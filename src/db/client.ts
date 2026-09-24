@@ -1,4 +1,3 @@
-// src/db/client.ts
 import 'server-only'
 import { createDb, type DB } from './index'
 

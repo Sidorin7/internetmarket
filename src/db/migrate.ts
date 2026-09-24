@@ -1,4 +1,3 @@
-// src/db/migrate.ts
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 import { createDb } from './index'
 
