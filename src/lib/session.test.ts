@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { checkPassword, signSession, verifySession } from './session'
+import { checkPassword, signSession, verifySession, weakConfigReason } from './session'
 
 beforeEach(() => {
   process.env.SESSION_SECRET = 'x'.repeat(40)
@@ -27,5 +27,18 @@ describe('checkPassword', () => {
   it('denies everything when ADMIN_PASSWORD is empty', () => {
     process.env.ADMIN_PASSWORD = ''
     expect(checkPassword('')).toBe(false)
+  })
+})
+
+describe('weakConfigReason', () => {
+  const strong = { SESSION_SECRET: 'q'.repeat(20) + 'Zx9-' + 'w'.repeat(24), ADMIN_PASSWORD: 'Korova-Molоko-42' }
+  it('refuses placeholders and short passwords in production', () => {
+    expect(weakConfigReason({ ...strong, NODE_ENV: 'production' })).toBeNull()
+    expect(weakConfigReason({ ...strong, NODE_ENV: 'production', SESSION_SECRET: 'replace-with-at-least-32-random-characters-xxxxx' })).toMatch(/SESSION_SECRET/)
+    expect(weakConfigReason({ ...strong, NODE_ENV: 'production', ADMIN_PASSWORD: 'change-me' })).toMatch(/ADMIN_PASSWORD/)
+    expect(weakConfigReason({ ...strong, NODE_ENV: 'production', ADMIN_PASSWORD: 'short-pass' })).toMatch(/ADMIN_PASSWORD/)
+  })
+  it('allows placeholders in development', () => {
+    expect(weakConfigReason({ NODE_ENV: 'development', SESSION_SECRET: 'replace-with-at-least-32-random-characters-xxxxx', ADMIN_PASSWORD: 'change-me' })).toBeNull()
   })
 })

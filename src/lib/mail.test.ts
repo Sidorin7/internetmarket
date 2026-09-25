@@ -49,6 +49,8 @@ describe('sendOrderEmails', () => {
     const send = vi.fn<SendFn>().mockResolvedValue(undefined)
     expect(await sendOrderEmails(order, { send, sellerEmail: 'seller@shop.ru' })).toBe(true)
     expect(send.mock.calls.map((c) => c[0].to)).toEqual(['seller@shop.ru', 'anna@example.com'])
+    // ответ покупателя на письмо должен попасть продавцу, а не на технический адрес отправителя
+    expect(send.mock.calls[1][0].replyTo).toBe('seller@shop.ru')
   })
 
   it('returns false when smtp fails, without throwing', async () => {

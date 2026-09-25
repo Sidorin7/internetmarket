@@ -81,3 +81,10 @@ export const orderItems = sqliteTable('order_items', {
   price: integer('price').notNull(),
   qty: integer('qty').notNull(),
 })
+
+// Счётчики для ограничения частоты (вход в админку, оформление заказов) — общие для всех инстансов serverless
+export const rateLimits = sqliteTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull(),
+  resetAt: integer('reset_at').notNull(),
+})

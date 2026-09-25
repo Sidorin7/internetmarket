@@ -4,9 +4,27 @@ import { jwtVerify, SignJWT } from 'jose'
 export const SESSION_COOKIE = 'admin_session'
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 7
 
+const PLACEHOLDERS = ['replace-with', 'change-me', 'changeme', 'secret', 'xxxxx']
+
+// Репозиторий публичный: значения из .env.example известны всем, поэтому в проде они запрещены
+export function weakConfigReason(env: Record<string, string | undefined> = process.env): string | null {
+  if (env.NODE_ENV !== 'production') return null
+  const secret = env.SESSION_SECRET ?? ''
+  if (secret.length < 32 || PLACEHOLDERS.some((p) => secret.toLowerCase().includes(p))) {
+    return 'SESSION_SECRET не задан или взят из .env.example — сгенерируйте: openssl rand -base64 48'
+  }
+  const password = env.ADMIN_PASSWORD ?? ''
+  if (password.length < 12 || PLACEHOLDERS.some((p) => password.toLowerCase().includes(p))) {
+    return 'ADMIN_PASSWORD слишком простой — нужно не меньше 12 символов и не значение из .env.example'
+  }
+  return null
+}
+
 function key() {
   const secret = process.env.SESSION_SECRET
   if (!secret || secret.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters')
+  const weak = weakConfigReason()
+  if (weak) throw new Error(weak)
   return new TextEncoder().encode(secret)
 }
 
@@ -27,6 +45,11 @@ export async function verifySession(token: string | undefined): Promise<boolean>
 export function checkPassword(input: string): boolean {
   const expected = process.env.ADMIN_PASSWORD
   if (!expected) return false
+  const weak = weakConfigReason()
+  if (weak) {
+    console.error(`[admin] вход отключён: ${weak}`)
+    return false
+  }
   const a = createHash('sha256').update(input).digest()
   const b = createHash('sha256').update(expected).digest()
   return timingSafeEqual(a, b)

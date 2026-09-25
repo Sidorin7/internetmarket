@@ -4,16 +4,20 @@ import { CircleCheck } from 'lucide-react'
 import { db } from '@/db/client'
 import { getOrderByNumber } from '@/features/orders/queries'
 import { formatPrice } from '@/lib/money'
+import { verifyOrderToken } from '@/lib/order-token'
 import { ClearCart } from './ClearCart'
 
-type Props = { params: Promise<{ number: string }>; searchParams: Promise<{ new?: string }> }
+type Props = { params: Promise<{ number: string }>; searchParams: Promise<{ new?: string; t?: string }> }
 
-export const metadata = { title: 'Заказ оформлен' }
+export const metadata = { title: 'Заказ оформлен', robots: { index: false } }
 
 export default async function OrderPage({ params, searchParams }: Props) {
-  const order = await getOrderByNumber(db, (await params).number)
+  const { number } = await params
+  const { new: fresh, t } = await searchParams
+  if (!verifyOrderToken(number, t)) notFound()
+  const order = await getOrderByNumber(db, number)
   if (!order) notFound()
-  const isNew = (await searchParams).new === '1'
+  const isNew = fresh === '1'
   return (
     <div className="mx-auto max-w-xl rounded-card border border-line p-8 text-center">
       {isNew && <ClearCart />}

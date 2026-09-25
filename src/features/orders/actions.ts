@@ -6,7 +6,10 @@ import { after } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/db/client'
 import { orders } from '@/db/schema'
+import { clientIp } from '@/lib/client-ip'
 import { sendOrderEmails } from '@/lib/mail'
+import { orderToken } from '@/lib/order-token'
+import { hitRateLimit } from '@/lib/rate-limit'
 import { createOrder } from './create-order'
 import { checkoutSchema } from './schema'
 
@@ -32,6 +35,10 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
   const parsed = checkoutSchema.safeParse({ ...values, items: parseItems(formData.get('items')) })
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors, values }
 
+  // каждый заказ шлёт письмо на указанный адрес — без лимита форму можно превратить в рассыльщик
+  const limit = await hitRateLimit(db, `order:${await clientIp()}`, 10, 60 * 60 * 1000)
+  if (!limit.ok) return { error: 'Слишком много заказов подряд. Попробуйте через час или позвоните нам.', values }
+
   const { items, ...customer } = parsed.data
   const result = await createOrder(db, { customer, items })
   if (!result.ok) return { error: result.error, badVariantId: result.variantId, values }
@@ -42,5 +49,5 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
     if (sent) await db.update(orders).set({ emailSent: true }).where(eq(orders.id, result.order.id)).run()
   })
 
-  redirect(`/order/${result.order.number}?new=1`)
+  redirect(`/order/${result.order.number}?new=1&t=${orderToken(result.order.number)}`)
 }

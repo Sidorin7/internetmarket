@@ -4,7 +4,7 @@ import { SHOP_NAME } from './config'
 import { formatPrice } from './money'
 import { formatPhone } from './phone'
 
-export type SendFn = (msg: { to: string; subject: string; text: string; html: string }) => Promise<unknown>
+export type SendFn = (msg: { to: string; replyTo?: string; subject: string; text: string; html: string }) => Promise<unknown>
 type Rendered = { subject: string; text: string; html: string }
 
 export function escapeHtml(s: string): string {
@@ -104,7 +104,7 @@ export async function sendOrderEmails(o: OrderSummary, opts: { send?: SendFn; se
   if (!sellerEmail) console.error('[mail] SELLER_EMAIL is not set')
   const jobs = [
     ...(sellerEmail ? [send({ to: sellerEmail, ...renderSellerEmail(o) })] : []),
-    send({ to: o.email, ...renderCustomerEmail(o) }),
+    send({ to: o.email, replyTo: sellerEmail, ...renderCustomerEmail(o) }),
   ]
   const results = await Promise.allSettled(jobs)
   const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
