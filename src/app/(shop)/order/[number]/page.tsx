@@ -11,7 +11,7 @@ type Props = { params: Promise<{ number: string }>; searchParams: Promise<{ new?
 export const metadata = { title: 'Заказ оформлен' }
 
 export default async function OrderPage({ params, searchParams }: Props) {
-  const order = getOrderByNumber(db, (await params).number)
+  const order = await getOrderByNumber(db, (await params).number)
   if (!order) notFound()
   const isNew = (await searchParams).new === '1'
   return (

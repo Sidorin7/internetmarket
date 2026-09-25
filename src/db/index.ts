@@ -1,15 +1,21 @@
-import Database from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { createClient } from '@libsql/client'
+import { drizzle } from 'drizzle-orm/libsql'
 import fs from 'node:fs'
 import path from 'node:path'
 import * as schema from './schema'
 
-export function createDb(file: string) {
-  if (file !== ':memory:') fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true })
-  const sqlite = new Database(file)
-  sqlite.pragma('journal_mode = WAL')
-  sqlite.pragma('foreign_keys = ON')
-  return drizzle({ client: sqlite, schema })
+// Локально — файл (`data/shop.db` или `file:data/shop.db`), в проде — Turso (`libsql://…` + токен).
+// libsql включает внешние ключи по умолчанию, каскады из схемы работают и в Turso.
+export function resolveDbUrl(url: string): string {
+  if (/^(libsql|https?|wss?):\/\//.test(url) || url.startsWith('file:') || url === ':memory:') return url
+  return `file:${url}`
+}
+
+export function createDb(url: string, authToken?: string) {
+  const resolved = resolveDbUrl(url)
+  if (resolved.startsWith('file:')) fs.mkdirSync(path.dirname(path.resolve(resolved.slice('file:'.length))), { recursive: true })
+  return drizzle({ client: createClient({ url: resolved, authToken: authToken || undefined }), schema })
 }
 
 export type DB = ReturnType<typeof createDb>
+export type Tx = Parameters<Parameters<DB['transaction']>[0]>[0]

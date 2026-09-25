@@ -40,40 +40,40 @@ export async function saveProductAction(id: number | null, formData: FormData): 
     images: [...((json(formData.get('images')) as string[] | null) ?? []), ...uploaded],
   })
   if (!parsed.success) return { error: parsed.error.issues.map((i) => i.message).join('. ') }
-  saveProduct(db, parsed.data, id ?? undefined)
+  await saveProduct(db, parsed.data, id ?? undefined)
   revalidatePath('/', 'layout')
   redirect('/admin/products')
 }
 
 export async function deleteProductAction(id: number): Promise<void> {
   await requireAdmin()
-  deleteProduct(db, id)
+  await deleteProduct(db, id)
   revalidatePath('/', 'layout')
 }
 
 export async function createCategoryAction(name: string): Promise<FormResult> {
   await requireAdmin()
-  const res = createCategory(db, name)
+  const res = await createCategory(db, name)
   revalidatePath('/', 'layout')
   return res.ok ? {} : { error: res.error }
 }
 
 export async function renameCategoryAction(id: number, name: string): Promise<void> {
   await requireAdmin()
-  renameCategory(db, id, name)
+  await renameCategory(db, id, name)
   revalidatePath('/', 'layout')
 }
 
 export async function deleteCategoryAction(id: number): Promise<FormResult> {
   await requireAdmin()
-  const res = deleteCategory(db, id)
+  const res = await deleteCategory(db, id)
   revalidatePath('/', 'layout')
   return res.ok ? {} : { error: res.error }
 }
 
 export async function setOrderStatusAction(id: number, status: string): Promise<FormResult> {
   await requireAdmin()
-  const res = setOrderStatus(db, id, z.enum(ORDER_STATUSES).parse(status))
+  const res = await setOrderStatus(db, id, z.enum(ORDER_STATUSES).parse(status))
   revalidatePath('/', 'layout') // при отмене меняются остатки на витрине
   return res.ok ? {} : { error: res.error }
 }

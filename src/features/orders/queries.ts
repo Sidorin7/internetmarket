@@ -3,10 +3,10 @@ import type { DB } from '@/db'
 import { orderItems, orders } from '@/db/schema'
 import type { OrderSummary } from './types'
 
-export function getOrderByNumber(db: DB, number: string): OrderSummary | null {
-  const o = db.select().from(orders).where(eq(orders.number, number)).get()
+export async function getOrderByNumber(db: DB, number: string): Promise<OrderSummary | null> {
+  const o = await db.select().from(orders).where(eq(orders.number, number)).get()
   if (!o) return null
-  const items = db
+  const items = await db
     .select({ title: orderItems.title, size: orderItems.size, price: orderItems.price, qty: orderItems.qty })
     .from(orderItems)
     .where(eq(orderItems.orderId, o.id))

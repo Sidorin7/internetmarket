@@ -8,7 +8,7 @@ import type { listOrders } from '@/features/admin/orders'
 import { formatPrice } from '@/lib/money'
 import { formatPhone } from '@/lib/phone'
 
-type Row = ReturnType<typeof listOrders>[number]
+type Row = Awaited<ReturnType<typeof listOrders>>[number]
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Новый' },
   { value: 'confirmed', label: 'Подтверждён' },

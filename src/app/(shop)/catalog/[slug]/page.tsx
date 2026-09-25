@@ -8,13 +8,13 @@ import { getAvailableSizes, getCategoryBySlug, getProducts } from '@/features/ca
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<RawParams> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const category = getCategoryBySlug(db, (await params).slug)
+  const category = await getCategoryBySlug(db, (await params).slug)
   return category ? { title: category.name } : {}
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params
-  const category = getCategoryBySlug(db, slug)
+  const category = await getCategoryBySlug(db, slug)
   if (!category) notFound()
   const raw = await searchParams
   const filters = parseFilters(raw, slug)
@@ -24,8 +24,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       basePath={`/catalog/${slug}`}
       params={raw}
       filters={filters}
-      sizes={getAvailableSizes(db, slug)}
-      result={getProducts(db, filters)}
+      sizes={await getAvailableSizes(db, slug)}
+      result={await getProducts(db, filters)}
     />
   )
 }

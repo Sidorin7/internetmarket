@@ -8,10 +8,10 @@ const ids = z.array(z.number().int().positive()).max(100)
 
 export async function getCartLinesAction(variantIds: number[]) {
   const parsed = ids.safeParse(variantIds)
-  return parsed.success ? getCartLines(db, parsed.data) : []
+  return parsed.success ? await getCartLines(db, parsed.data) : []
 }
 
 export async function getProductsByIdsAction(productIds: number[]) {
   const parsed = ids.safeParse(productIds)
-  return parsed.success ? getProductsByIds(db, parsed.data) : []
+  return parsed.success ? await getProductsByIds(db, parsed.data) : []
 }

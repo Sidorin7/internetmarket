@@ -14,8 +14,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       basePath="/search"
       params={raw}
       filters={filters}
-      sizes={getAvailableSizes(db)}
-      result={getProducts(db, filters)}
+      sizes={await getAvailableSizes(db)}
+      result={await getProducts(db, filters)}
     />
   )
 }

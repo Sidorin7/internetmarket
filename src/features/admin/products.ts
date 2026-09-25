@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
-import type { DB } from '@/db'
+import type { DB, Tx } from '@/db'
 import { categories, productImages, products, productVariants } from '@/db/schema'
 import { buildSearchText } from '@/lib/search'
 import { sortSizes } from '@/lib/sizes'
@@ -30,10 +30,10 @@ export const productInputSchema = z.object({
 
 export type ProductInput = z.output<typeof productInputSchema>
 
-function uniqueSlug(db: DB, base: string, excludeId?: number): string {
+async function uniqueSlug(db: DB | Tx, base: string, excludeId?: number): Promise<string> {
   let slug = base
   for (let n = 2; ; n++) {
-    const clash = db
+    const clash = await db
       .select({ id: products.id })
       .from(products)
       .where(excludeId ? and(eq(products.slug, slug), ne(products.id, excludeId)) : eq(products.slug, slug))
@@ -43,8 +43,8 @@ function uniqueSlug(db: DB, base: string, excludeId?: number): string {
   }
 }
 
-export function saveProduct(db: DB, input: ProductInput, id?: number): number {
-  return db.transaction((tx) => {
+export async function saveProduct(db: DB, input: ProductInput, id?: number): Promise<number> {
+  return db.transaction(async (tx) => {
     const fields = {
       title: input.title,
       description: input.description,
@@ -56,36 +56,38 @@ export function saveProduct(db: DB, input: ProductInput, id?: number): number {
     }
     let productId: number
     if (id) {
-      const current = tx.select({ title: products.title, slug: products.slug }).from(products).where(eq(products.id, id)).get()
+      const current = await tx.select({ title: products.title, slug: products.slug }).from(products).where(eq(products.id, id)).get()
       if (!current) throw new Error(`Product ${id} not found`)
-      const slug = current.title === input.title ? current.slug : uniqueSlug(tx as unknown as DB, slugify(input.title), id)
-      tx.update(products).set({ ...fields, slug }).where(eq(products.id, id)).run()
+      const slug = current.title === input.title ? current.slug : await uniqueSlug(tx, slugify(input.title), id)
+      await tx.update(products).set({ ...fields, slug }).where(eq(products.id, id)).run()
       productId = id
     } else {
-      productId = tx.insert(products).values({ ...fields, slug: uniqueSlug(tx as unknown as DB, slugify(input.title)) }).returning({ id: products.id }).get().id
+      productId = (await tx.insert(products).values({ ...fields, slug: await uniqueSlug(tx, slugify(input.title)) }).returning({ id: products.id }).get()).id
     }
 
     const sizes = input.variants.map((v) => v.size)
-    tx.delete(productVariants).where(and(eq(productVariants.productId, productId), notInArray(productVariants.size, sizes))).run()
+    await tx.delete(productVariants).where(and(eq(productVariants.productId, productId), notInArray(productVariants.size, sizes))).run()
     for (const v of input.variants) {
-      tx.insert(productVariants)
+      await tx.insert(productVariants)
         .values({ productId, size: v.size, stock: v.stock })
         .onConflictDoUpdate({ target: [productVariants.productId, productVariants.size], set: { stock: v.stock } })
         .run()
     }
 
-    tx.delete(productImages).where(eq(productImages.productId, productId)).run()
-    input.images.forEach((url, sort) => tx.insert(productImages).values({ productId, url, sort }).run())
+    await tx.delete(productImages).where(eq(productImages.productId, productId)).run()
+    if (input.images.length) {
+      await tx.insert(productImages).values(input.images.map((url, sort) => ({ productId, url, sort }))).run()
+    }
     return productId
   })
 }
 
-export function deleteProduct(db: DB, id: number): void {
-  db.delete(products).where(eq(products.id, id)).run()
+export async function deleteProduct(db: DB, id: number): Promise<void> {
+  await db.delete(products).where(eq(products.id, id)).run()
 }
 
-export function listAdminProducts(db: DB) {
-  const rows = db
+export async function listAdminProducts(db: DB) {
+  const rows = await db
     .select({
       id: products.id,
       slug: products.slug,
@@ -102,17 +104,17 @@ export function listAdminProducts(db: DB) {
   const ids = rows.map((r) => r.id)
   const firstImage = new Map<number, string>()
   if (ids.length) {
-    for (const img of db.select().from(productImages).where(inArray(productImages.productId, ids)).orderBy(asc(productImages.sort)).all()) {
+    for (const img of await db.select().from(productImages).where(inArray(productImages.productId, ids)).orderBy(asc(productImages.sort)).all()) {
       if (!firstImage.has(img.productId)) firstImage.set(img.productId, img.url)
     }
   }
   return rows.map((r) => ({ ...r, image: firstImage.get(r.id) ?? null }))
 }
 
-export function getAdminProduct(db: DB, id: number) {
-  const p = db.select().from(products).where(eq(products.id, id)).get()
+export async function getAdminProduct(db: DB, id: number) {
+  const p = await db.select().from(products).where(eq(products.id, id)).get()
   if (!p) return null
-  const variants = db.select({ size: productVariants.size, stock: productVariants.stock }).from(productVariants).where(eq(productVariants.productId, id)).all()
+  const variants = await db.select({ size: productVariants.size, stock: productVariants.stock }).from(productVariants).where(eq(productVariants.productId, id)).all()
   const order = sortSizes(variants.map((v) => v.size))
   return {
     id: p.id,
@@ -124,6 +126,6 @@ export function getAdminProduct(db: DB, id: number) {
     categoryId: p.categoryId,
     isActive: p.isActive,
     variants: variants.sort((a, b) => order.indexOf(a.size) - order.indexOf(b.size)),
-    images: db.select({ url: productImages.url }).from(productImages).where(eq(productImages.productId, id)).orderBy(asc(productImages.sort)).all().map((i) => i.url),
+    images: (await db.select({ url: productImages.url }).from(productImages).where(eq(productImages.productId, id)).orderBy(asc(productImages.sort)).all()).map((i) => i.url),
   }
 }

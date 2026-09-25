@@ -15,11 +15,12 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "@mantine/core": "^9.6.2",
     "@mantine/dropzone": "^9.6.2",
     "@mantine/hooks": "^9.6.2",
     "@mantine/notifications": "^9.6.2",
-    "better-sqlite3": "^13.0.3",
+    "@vercel/blob": "^2.8.0",
     "drizzle-orm": "^0.45.3",
     "jose": "^6.2.12",
     "lucide-react": "^1.48.0",
@@ -36,7 +37,6 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.13.6",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",

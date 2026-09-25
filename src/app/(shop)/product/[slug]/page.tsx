@@ -9,12 +9,12 @@ import { getProductBySlug } from '@/features/catalog/queries'
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const product = getProductBySlug(db, (await params).slug)
+  const product = await getProductBySlug(db, (await params).slug)
   return product ? { title: product.title, description: product.description.slice(0, 160) } : {}
 }
 
 export default async function ProductPage({ params }: Props) {
-  const product = getProductBySlug(db, (await params).slug)
+  const product = await getProductBySlug(db, (await params).slug)
   if (!product) notFound()
   return (
     <div>

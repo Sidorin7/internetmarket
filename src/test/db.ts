@@ -1,12 +1,12 @@
 import path from 'node:path'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { migrate } from 'drizzle-orm/libsql/migrator'
 import { createDb, type DB } from '@/db'
 import { categories, productImages, products, productVariants } from '@/db/schema'
 import { buildSearchText } from '@/lib/search'
 
-export function createTestDb(): DB {
+export async function createTestDb(): Promise<DB> {
   const db = createDb(':memory:')
-  migrate(db, { migrationsFolder: path.resolve(__dirname, '../../drizzle') })
+  await migrate(db, { migrationsFolder: path.resolve(__dirname, '../../drizzle') })
   return db
 }
 
@@ -21,8 +21,8 @@ type NewProduct = {
   images?: string[]
 }
 
-export function insertProduct(db: DB, p: NewProduct) {
-  const product = db
+export async function insertProduct(db: DB, p: NewProduct) {
+  const product = await db
     .insert(products)
     .values({
       title: p.title,
@@ -35,20 +35,22 @@ export function insertProduct(db: DB, p: NewProduct) {
     })
     .returning()
     .get()
-  const variants = p.variants.map(([size, stock]) =>
-    db.insert(productVariants).values({ productId: product.id, size, stock }).returning().get(),
-  )
-  ;(p.images ?? [`https://picsum.photos/seed/${p.slug}/600/800`]).forEach((url, sort) =>
-    db.insert(productImages).values({ productId: product.id, url, sort }).run(),
-  )
+  const variants = await db
+    .insert(productVariants)
+    .values(p.variants.map(([size, stock]) => ({ productId: product.id, size, stock })))
+    .returning()
+    .all()
+    .then((vs) => vs.sort((a, b) => a.id - b.id))
+  const images = p.images ?? [`https://picsum.photos/seed/${p.slug}/600/800`]
+  if (images.length) await db.insert(productImages).values(images.map((url, sort) => ({ productId: product.id, url, sort }))).run()
   return { product, variants }
 }
 
-export function seedFixture(db: DB) {
-  const dresses = db.insert(categories).values({ name: 'Платья', slug: 'dresses' }).returning().get()
-  const shoes = db.insert(categories).values({ name: 'Обувь', slug: 'shoes' }).returning().get()
+export async function seedFixture(db: DB) {
+  const dresses = await db.insert(categories).values({ name: 'Платья', slug: 'dresses' }).returning().get()
+  const shoes = await db.insert(categories).values({ name: 'Обувь', slug: 'shoes' }).returning().get()
 
-  const dress = insertProduct(db, {
+  const dress = await insertProduct(db, {
     title: 'Льняное платье',
     slug: 'lnyanoe-plate',
     price: 499000,
@@ -56,14 +58,14 @@ export function seedFixture(db: DB) {
     categoryId: dresses.id,
     variants: [['S', 3], ['M', 0], ['L', 1]],
   })
-  const sneakers = insertProduct(db, {
+  const sneakers = await insertProduct(db, {
     title: 'Кеды белые',
     slug: 'kedy-belye',
     price: 299000,
     categoryId: shoes.id,
     variants: [['40', 5], ['41', 2]],
   })
-  const hidden = insertProduct(db, {
+  const hidden = await insertProduct(db, {
     title: 'Старое платье',
     slug: 'staroe-plate',
     price: 100000,
@@ -81,4 +83,4 @@ export function seedFixture(db: DB) {
   }
 }
 
-export type Fixture = ReturnType<typeof seedFixture>
+export type Fixture = Awaited<ReturnType<typeof seedFixture>>

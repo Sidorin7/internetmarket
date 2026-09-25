@@ -33,13 +33,13 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
   if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors, values }
 
   const { items, ...customer } = parsed.data
-  const result = createOrder(db, { customer, items })
+  const result = await createOrder(db, { customer, items })
   if (!result.ok) return { error: result.error, badVariantId: result.variantId, values }
 
   // письма уходят после ответа: медленный SMTP не должен держать покупателя на «Оформляем…»
   after(async () => {
     const sent = await sendOrderEmails(result.order)
-    if (sent) db.update(orders).set({ emailSent: true }).where(eq(orders.id, result.order.id)).run()
+    if (sent) await db.update(orders).set({ emailSent: true }).where(eq(orders.id, result.order.id)).run()
   })
 
   redirect(`/order/${result.order.number}?new=1`)

@@ -4,8 +4,8 @@ import { db } from '@/db/client'
 import { getCategories } from '@/features/catalog/queries'
 import { SHOP_NAME } from '@/lib/config'
 
-export default function ShopLayout({ children }: { children: React.ReactNode }) {
-  const categories = getCategories(db)
+export default async function ShopLayout({ children }: { children: React.ReactNode }) {
+  const categories = await getCategories(db)
   return (
     <>
       <Header categories={categories} />
