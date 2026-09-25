@@ -6,7 +6,6 @@ import { z } from 'zod'
 import { db } from '@/db/client'
 import { ORDER_STATUSES } from '@/db/schema'
 import { requireAdmin } from '@/lib/admin'
-import { saveUpload } from '@/lib/uploads'
 import { createCategory, deleteCategory, renameCategory } from './categories'
 import { setOrderStatus } from './orders'
 import { deleteProduct, productInputSchema, saveProduct } from './products'
@@ -23,12 +22,6 @@ function json(v: FormDataEntryValue | null): unknown {
 
 export async function saveProductAction(id: number | null, formData: FormData): Promise<FormResult> {
   await requireAdmin()
-  let uploaded: string[]
-  try {
-    uploaded = await Promise.all(formData.getAll('files').filter((f): f is File => f instanceof File && f.size > 0).map(saveUpload))
-  } catch (e) {
-    return { error: (e as Error).message }
-  }
   const parsed = productInputSchema.safeParse({
     title: formData.get('title'),
     description: formData.get('description') ?? '',
@@ -37,7 +30,7 @@ export async function saveProductAction(id: number | null, formData: FormData): 
     categoryId: formData.get('categoryId'),
     isActive: formData.get('isActive'),
     variants: json(formData.get('variants')),
-    images: [...((json(formData.get('images')) as string[] | null) ?? []), ...uploaded],
+    images: json(formData.get('images')) ?? [],
   })
   if (!parsed.success) return { error: parsed.error.issues.map((i) => i.message).join('. ') }
   await saveProduct(db, parsed.data, id ?? undefined)

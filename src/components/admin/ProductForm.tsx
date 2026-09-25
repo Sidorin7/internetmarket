@@ -4,6 +4,7 @@ import { ActionIcon, Alert, Button, CloseButton, Group, Image, NumberInput, Pape
 import { Dropzone, IMAGE_MIME_TYPE } from '@mantine/dropzone'
 import { useState, useTransition } from 'react'
 import { saveProductAction } from '@/features/admin/actions'
+import { uploadImage, type ImageStorage } from '@/lib/upload-client'
 
 type Variant = { size: string; stock: number }
 type Initial = { id: number; title: string; description: string; price: number; oldPrice: number | null; categoryId: number; isActive: boolean; variants: Variant[]; images: string[] }
@@ -14,7 +15,7 @@ const PRESETS: Record<string, string[]> = {
   'Один размер': ['ONE SIZE'],
 }
 
-export function ProductForm({ categories, initial }: { categories: { id: number; name: string }[]; initial?: Initial }) {
+export function ProductForm({ categories, initial, storage }: { categories: { id: number; name: string }[]; initial?: Initial; storage: ImageStorage }) {
   const [variants, setVariants] = useState<Variant[]>(initial?.variants ?? [])
   const [images, setImages] = useState<string[]>(initial?.images ?? [])
   const [files, setFiles] = useState<File[]>([])
@@ -26,10 +27,21 @@ export function ProductForm({ categories, initial }: { categories: { id: number;
     const fd = new FormData(e.currentTarget)
     fd.set('isActive', String(fd.get('isActive') === 'on'))
     fd.set('variants', JSON.stringify(variants))
-    fd.set('images', JSON.stringify(images))
-    files.forEach((f) => fd.append('files', f))
     setError('')
     start(async () => {
+      // сначала фото (прямо в хранилище), потом товар — так запрос к серверу остаётся маленьким
+      let uploaded: string[]
+      try {
+        uploaded = await Promise.all(files.map((f) => uploadImage(f, storage)))
+      } catch (err) {
+        setError((err as Error).message)
+        return
+      }
+      const all = [...images, ...uploaded]
+      // загруженные переносим в список фото, чтобы при ошибке валидации не грузить их повторно
+      setImages(all)
+      setFiles([])
+      fd.set('images', JSON.stringify(all))
       const res = await saveProductAction(initial?.id ?? null, fd)
       if (res?.error) setError(res.error)
     })

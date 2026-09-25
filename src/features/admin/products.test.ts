@@ -82,6 +82,13 @@ describe('productInputSchema', () => {
     const dup = productInputSchema.safeParse({ title: 'Кепка', description: '', price: '990', categoryId: '1', isActive: 'true', variants: [{ size: 'M', stock: 1 }, { size: 'm ', stock: 1 }], images: [] })
     expect(dup.success).toBe(false)
   })
+  it('rejects foreign image urls and prices that round to zero', async () => {
+    const input = { title: 'Кепка', description: '', price: '990', categoryId: '1', isActive: 'true', variants: [{ size: 'M', stock: 1 }], images: [] as string[] }
+    expect(productInputSchema.safeParse({ ...input, images: ['https://evil.example.com/a.jpg'] }).success).toBe(false)
+    expect(productInputSchema.safeParse({ ...input, images: ['https://picsum.photos/seed/kepka-1/600/800'] }).success).toBe(true)
+    expect(productInputSchema.safeParse({ ...input, price: '0.004' }).success).toBe(false)
+  })
+
   it('accepts prices formatted with thousand separators and decimal comma', async () => {
     const ok = productInputSchema.parse({ title: 'Кепка', description: '', price: '1 990', oldPrice: '2 490,50', categoryId: '1', isActive: 'true', variants: [{ size: 'M', stock: 1 }], images: [] })
     expect([ok.price, ok.oldPrice]).toEqual([199000, 249050])

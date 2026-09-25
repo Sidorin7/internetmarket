@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { DB, Tx } from '@/db'
 import { categories, productImages, products, productVariants } from '@/db/schema'
+import { isAllowedImageUrl } from '@/lib/image-url'
 import { buildSearchText } from '@/lib/search'
 import { sortSizes } from '@/lib/sizes'
 import { slugify } from '@/lib/slug'
@@ -11,7 +12,7 @@ const normalizeNumber = (v: unknown) => (typeof v === 'string' ? v.replace(/\s/g
 
 const rubles = z
   .preprocess(normalizeNumber, z.coerce.number({ error: 'Укажите цену числом' }))
-  .pipe(z.number().positive('Цена должна быть больше 0').max(10_000_000))
+  .pipe(z.number().min(0.01, 'Цена должна быть больше 0').max(10_000_000))
   .transform((r) => Math.round(r * 100))
 
 export const productInputSchema = z.object({
@@ -25,7 +26,7 @@ export const productInputSchema = z.object({
     .array(z.object({ size: z.string().trim().toUpperCase().min(1).max(20), stock: z.coerce.number().int().min(0).max(100000) }))
     .min(1, 'Добавьте хотя бы один размер')
     .refine((vs) => new Set(vs.map((v) => v.size)).size === vs.length, 'Размеры не должны повторяться'),
-  images: z.array(z.string().max(500)).max(20).default([]),
+  images: z.array(z.string().max(500).refine(isAllowedImageUrl, 'Недопустимый адрес фото')).max(20).default([]),
 })
 
 export type ProductInput = z.output<typeof productInputSchema>

@@ -5,10 +5,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'picsum.photos' },
       { protocol: 'https', hostname: 'fastly.picsum.photos' },
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
     ],
-  },
-  experimental: {
-    serverActions: { bodySizeLimit: '20mb' },
   },
 }
 
