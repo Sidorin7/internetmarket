@@ -71,8 +71,9 @@ export async function deleteCategoryAction(id: number): Promise<FormResult> {
   return res.ok ? {} : { error: res.error }
 }
 
-export async function setOrderStatusAction(id: number, status: string): Promise<void> {
+export async function setOrderStatusAction(id: number, status: string): Promise<FormResult> {
   await requireAdmin()
-  setOrderStatus(db, id, z.enum(ORDER_STATUSES).parse(status))
-  revalidatePath('/admin/orders')
+  const res = setOrderStatus(db, id, z.enum(ORDER_STATUSES).parse(status))
+  revalidatePath('/', 'layout') // при отмене меняются остатки на витрине
+  return res.ok ? {} : { error: res.error }
 }

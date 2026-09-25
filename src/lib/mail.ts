@@ -79,15 +79,22 @@ export function renderCustomerEmail(o: OrderSummary): Rendered {
   return { subject: `Заказ №${o.number} принят — ${SHOP_NAME}`, text, html }
 }
 
-function smtpSend(): SendFn {
+export function smtpOptions() {
   const port = Number(process.env.SMTP_PORT ?? 1025)
-  const transport = nodemailer.createTransport({
+  return {
     host: process.env.SMTP_HOST ?? 'localhost',
     port,
     secure: port === 465,
     auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+    // по умолчанию nodemailer ждёт приветствия 30 с, а ответа сокета — 10 минут
     connectionTimeout: 5000,
-  })
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  }
+}
+
+function smtpSend(): SendFn {
+  const transport = nodemailer.createTransport(smtpOptions())
   return (msg) => transport.sendMail({ from: process.env.MAIL_FROM ?? `${SHOP_NAME} <shop@example.com>`, ...msg })
 }
 

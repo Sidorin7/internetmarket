@@ -1,6 +1,7 @@
 'use client'
 
 import { Anchor, Badge, Select, Stack, Table, Text, Title, Tooltip } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import { useTransition } from 'react'
 import { setOrderStatusAction } from '@/features/admin/actions'
 import type { listOrders } from '@/features/admin/orders'
@@ -41,7 +42,20 @@ export function OrdersTable({ rows }: { rows: Row[] }) {
               <Table.Td>{o.items.map((i, idx) => <Text key={idx} size="sm">{i.title}, {i.size} × {i.qty}</Text>)}</Table.Td>
               <Table.Td fw={600}>{formatPrice(o.total)}</Table.Td>
               <Table.Td>
-                <Select w={150} data={STATUS_OPTIONS} value={o.status} allowDeselect={false} onChange={(v) => v && start(() => setOrderStatusAction(o.id, v))} />
+                <Select
+                  w={150}
+                  data={STATUS_OPTIONS}
+                  value={o.status}
+                  allowDeselect={false}
+                  disabled={o.status === 'cancelled'}
+                  onChange={(v) => {
+                    if (v === 'cancelled' && !confirm(`Отменить заказ №${o.number}? Товары вернутся на склад.`)) return
+                    if (v) start(async () => {
+                      const r = await setOrderStatusAction(o.id, v)
+                      if (r.error) notifications.show({ color: 'red', message: r.error })
+                    })
+                  }}
+                />
               </Table.Td>
             </Table.Tr>
           ))}

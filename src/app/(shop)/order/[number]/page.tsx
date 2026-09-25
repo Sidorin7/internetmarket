@@ -19,7 +19,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
       {isNew && <ClearCart />}
       <CircleCheck className="mx-auto size-16 text-brand-500" />
       <h1 className="mt-4 font-display text-2xl font-bold">Заказ №{order.number} оформлен</h1>
-      <p className="mt-2 text-muted">Мы отправили подтверждение на почту и скоро позвоним.</p>
+      <p className="mt-2 text-muted">Скоро позвоним, чтобы подтвердить заказ. Письмо с деталями придёт на почту.</p>
       <ul className="mt-6 flex flex-col gap-2 text-left text-sm">
         {order.items.map((i, idx) => (
           <li key={idx} className="flex justify-between gap-3"><span>{i.title}, {i.size} × {i.qty}</span><span>{formatPrice(i.price * i.qty)}</span></li>

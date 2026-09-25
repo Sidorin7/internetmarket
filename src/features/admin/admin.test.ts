@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { DB } from '@/db'
+import { products, productVariants } from '@/db/schema'
 import { createOrder } from '@/features/orders/create-order'
 import { createTestDb, seedFixture, type Fixture } from '@/test/db'
 import { createCategory, deleteCategory, listCategoriesWithCounts, renameCategory } from './categories'
@@ -40,5 +42,30 @@ describe('orders', () => {
     expect(list[0]).toMatchObject({ status: 'new', emailSent: false, items: [{ title: 'Кеды белые', qty: 2 }] })
     setOrderStatus(db, list[0].id, 'shipped')
     expect(listOrders(db)[0].status).toBe('shipped')
+  })
+
+  it('returns stock on cancel once and refuses to reopen cancelled order', () => {
+    const customer = { name: 'Анна', phone: '+79001234567', email: 'a@a.ru', address: 'Москва 1', comment: '' }
+    const stockOf = (id: number) => db.select().from(productVariants).where(eq(productVariants.id, id)).get()!.stock
+    const before = stockOf(f.variants.sneakers40.id)
+    const res = createOrder(db, { customer, items: [{ variantId: f.variants.sneakers40.id, qty: 2 }] })
+    if (!res.ok) throw new Error(res.error)
+    expect(stockOf(f.variants.sneakers40.id)).toBe(before - 2)
+
+    expect(setOrderStatus(db, res.order.id, 'cancelled')).toEqual({ ok: true })
+    expect(stockOf(f.variants.sneakers40.id)).toBe(before)
+    expect(setOrderStatus(db, res.order.id, 'cancelled')).toEqual({ ok: true })
+    expect(stockOf(f.variants.sneakers40.id)).toBe(before)
+
+    expect(setOrderStatus(db, res.order.id, 'new')).toEqual({ ok: false, error: 'Отменённый заказ нельзя вернуть — оформите новый' })
+    expect(listOrders(db)[0].status).toBe('cancelled')
+  })
+
+  it('cancel skips items whose product was deleted', () => {
+    const customer = { name: 'Анна', phone: '+79001234567', email: 'a@a.ru', address: 'Москва 1', comment: '' }
+    const res = createOrder(db, { customer, items: [{ variantId: f.variants.dressS.id, qty: 1 }] })
+    if (!res.ok) throw new Error(res.error)
+    db.delete(products).where(eq(products.id, f.products.dress.id)).run()
+    expect(setOrderStatus(db, res.order.id, 'cancelled')).toEqual({ ok: true })
   })
 })

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { selectCartCount, useCart } from './store'
+import { missingVariantIds, selectCartCount, useCart } from './store'
 import { useFavorites } from '../favorites/store'
 
 beforeEach(() => {
@@ -26,6 +26,19 @@ describe('useCart', () => {
     expect(useCart.getState().items[0].qty).toBe(2)
     useCart.getState().setQty(1, 10, 3)
     expect(useCart.getState().items[0].qty).toBe(3)
+  })
+
+  it('drops variants the server no longer knows, keeping ones added meanwhile', () => {
+    const s = useCart.getState()
+    s.add({ variantId: 1, productId: 10 })
+    s.add({ variantId: 2, productId: 11 }, 3)
+    const requested = [1, 2]
+    s.add({ variantId: 3, productId: 12 }) // добавлен, пока запрос был в пути
+    const missing = missingVariantIds(requested, [{ variantId: 1 }])
+    expect(missing).toEqual([2])
+    useCart.getState().removeMany(missing)
+    expect(useCart.getState().items.map((i) => i.variantId)).toEqual([1, 3])
+    expect(selectCartCount(useCart.getState())).toBe(2)
   })
 
   it('removes item when qty set below 1, clears all', () => {

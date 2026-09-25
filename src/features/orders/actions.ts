@@ -2,6 +2,7 @@
 
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/db/client'
 import { orders } from '@/db/schema'
@@ -35,8 +36,11 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
   const result = createOrder(db, { customer, items })
   if (!result.ok) return { error: result.error, badVariantId: result.variantId, values }
 
-  const sent = await sendOrderEmails(result.order)
-  if (sent) db.update(orders).set({ emailSent: true }).where(eq(orders.id, result.order.id)).run()
+  // письма уходят после ответа: медленный SMTP не должен держать покупателя на «Оформляем…»
+  after(async () => {
+    const sent = await sendOrderEmails(result.order)
+    if (sent) db.update(orders).set({ emailSent: true }).where(eq(orders.id, result.order.id)).run()
+  })
 
   redirect(`/order/${result.order.number}?new=1`)
 }

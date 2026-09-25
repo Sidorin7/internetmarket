@@ -8,6 +8,7 @@ type CartState = {
   add: (item: { variantId: number; productId: number }, qty?: number, max?: number) => void
   setQty: (variantId: number, qty: number, max?: number) => void
   remove: (variantId: number) => void
+  removeMany: (variantIds: number[]) => void
   clear: () => void
 }
 
@@ -35,6 +36,7 @@ export const useCart = create<CartState>()(
           }
         }),
       remove: (variantId) => set((s) => ({ items: s.items.filter((i) => i.variantId !== variantId) })),
+      removeMany: (variantIds) => set((s) => ({ items: s.items.filter((i) => !variantIds.includes(i.variantId)) })),
       clear: () => set({ items: [] }),
     }),
     { name: 'cart-v1' },
@@ -42,3 +44,9 @@ export const useCart = create<CartState>()(
 )
 
 export const selectCartCount = (s: CartState) => s.items.reduce((n, i) => n + i.qty, 0)
+
+// Запрошенные размеры, которых сервер больше не знает (товар или размер удалён из админки)
+export const missingVariantIds = (requested: number[], lines: { variantId: number }[]) => {
+  const known = new Set(lines.map((l) => l.variantId))
+  return requested.filter((id) => !known.has(id))
+}

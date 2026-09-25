@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { OrderSummary } from '@/features/orders/types'
-import { renderCustomerEmail, renderSellerEmail, sendOrderEmails, type SendFn } from './mail'
+import { renderCustomerEmail, renderSellerEmail, sendOrderEmails, smtpOptions, type SendFn } from './mail'
 
 const order: OrderSummary = {
   id: 1,
@@ -55,5 +55,15 @@ describe('sendOrderEmails', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const send = vi.fn<SendFn>().mockRejectedValue(new Error('ECONNREFUSED'))
     expect(await sendOrderEmails(order, { send, sellerEmail: 'seller@shop.ru' })).toBe(false)
+  })
+})
+
+describe('smtpOptions', () => {
+  it('bounds every smtp phase so a stalled server cannot hang for minutes', () => {
+    const o = smtpOptions()
+    for (const t of [o.connectionTimeout, o.greetingTimeout, o.socketTimeout]) {
+      expect(t).toBeGreaterThan(0)
+      expect(t).toBeLessThanOrEqual(15000)
+    }
   })
 })

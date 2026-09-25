@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { getCartLinesAction } from '@/features/catalog/actions'
 import type { CartLine } from '@/features/catalog/queries'
-import { useCart } from '@/features/cart/store'
+import { missingVariantIds, useCart } from '@/features/cart/store'
 import { formatPrice } from '@/lib/money'
 import { useHydrated } from '@/lib/use-hydrated'
 
@@ -21,7 +21,12 @@ export function useCartLines() {
     if (!hydrated) return
     let cancelled = false
     const ids = idsKey ? idsKey.split(',').map(Number) : []
-    getCartLinesAction(ids).then((res) => !cancelled && setLines(res))
+    getCartLinesAction(ids).then((res) => {
+      if (cancelled) return
+      const missing = missingVariantIds(ids, res)
+      if (missing.length) useCart.getState().removeMany(missing)
+      setLines(res)
+    })
     return () => { cancelled = true }
   }, [hydrated, idsKey])
 
