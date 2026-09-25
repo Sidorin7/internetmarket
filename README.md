@@ -12,7 +12,7 @@ docker compose up -d mailpit  # письма смотреть на http://localh
 npm run dev                   # http://localhost:3000, админка — /admin
 ```
 
-Локально база — файл `data/shop.db`, фото товаров складываются в `data/uploads`.
+Локально база — файл `data/shop.db`, фото товаров складываются в `data/uploads`. Фото демо-каталога лежат в `public/seed` (лицензия CC0, источники в `public/seed/CREDITS.md`).
 
 `npm run db:seed` пересоздаёт каталог и **удаляет все заказы**. Если заказы уже есть, сид откажется работать; чтобы запустить его всё равно, задайте `SEED_FORCE=1`.
 

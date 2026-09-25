@@ -6,6 +6,7 @@ describe('isAllowedImageUrl', () => {
     expect(isAllowedImageUrl('/uploads/0b8f2a9e-1c3d-4e5f-8a9b-0c1d2e3f4a5b.webp')).toBe(true)
     expect(isAllowedImageUrl('https://abc123.public.blob.vercel-storage.com/products/photo-x7Yz.jpg')).toBe(true)
     expect(isAllowedImageUrl('https://picsum.photos/seed/kedy-1/600/800')).toBe(true)
+    expect(isAllowedImageUrl('/seed/obuv-1-2.jpg')).toBe(true)
   })
 
   it('rejects everything else', () => {
@@ -15,6 +16,7 @@ describe('isAllowedImageUrl', () => {
       'https://public.blob.vercel-storage.com.evil.com/a.jpg',
       'javascript:alert(1)',
       '/uploads/../../etc/passwd',
+      '/seed/../../.env',
       '//evil.com/a.jpg',
       '',
     ]) {
