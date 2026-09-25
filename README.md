@@ -39,7 +39,7 @@ npm run e2e   # сценарий покупки (playwright); поднимает
 
    | Переменная | Значение |
    |---|---|
-   | `DATABASE_URL`, `DATABASE_AUTH_TOKEN` | из шага 1 |
+   | `DATABASE_URL`, `DATABASE_AUTH_TOKEN` | из шага 1. Если база подключена через интеграцию Turso в маркетплейсе Vercel, её переменные `TURSO_DATABASE_URL` и `TURSO_AUTH_TOKEN` подхватятся сами |
    | `ADMIN_PASSWORD` | не короче 12 символов |
    | `SESSION_SECRET` | `openssl rand -base64 48` |
    | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | почтовый ящик, например `smtp.yandex.ru`, `465` и [пароль приложения](https://id.yandex.ru/security/app-passwords) |

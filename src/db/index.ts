@@ -11,10 +11,23 @@ export function resolveDbUrl(url: string): string {
   return `file:${url}`
 }
 
+// Интеграция Turso в маркетплейсе Vercel создаёт TURSO_DATABASE_URL / TURSO_AUTH_TOKEN — понимаем оба варианта имён
+export function dbConfigFromEnv(env: Record<string, string | undefined> = process.env) {
+  return {
+    url: env.DATABASE_URL || env.TURSO_DATABASE_URL || 'data/shop.db',
+    authToken: env.DATABASE_AUTH_TOKEN || env.TURSO_AUTH_TOKEN || undefined,
+  }
+}
+
 export function createDb(url: string, authToken?: string) {
   const resolved = resolveDbUrl(url)
   if (resolved.startsWith('file:')) fs.mkdirSync(path.dirname(path.resolve(resolved.slice('file:'.length))), { recursive: true })
   return drizzle({ client: createClient({ url: resolved, authToken: authToken || undefined }), schema })
+}
+
+export function createDbFromEnv() {
+  const { url, authToken } = dbConfigFromEnv()
+  return createDb(url, authToken)
 }
 
 export type DB = ReturnType<typeof createDb>

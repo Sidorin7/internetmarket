@@ -1,10 +1,10 @@
 import { count } from 'drizzle-orm'
-import { createDb } from './index'
+import { createDbFromEnv } from './index'
 import { categories, orderItems, orders, productImages, products, productVariants } from './schema'
 import { buildSearchText } from '@/lib/search'
 import { slugify } from '@/lib/slug'
 
-const db = createDb(process.env.DATABASE_URL ?? 'data/shop.db', process.env.DATABASE_AUTH_TOKEN)
+const db = createDbFromEnv()
 
 // детерминированный ГПСЧ, чтобы сид всегда давал одни и те же данные
 let seed = 42
