@@ -42,6 +42,29 @@ export async function verifySession(token: string | undefined): Promise<boolean>
   }
 }
 
+export const USER_COOKIE = 'user_session'
+export const USER_MAX_AGE = 60 * 60 * 24 * 30
+
+export async function signUserSession(userId: number): Promise<string> {
+  return new SignJWT({ role: 'user' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(String(userId))
+    .setIssuedAt()
+    .setExpirationTime('30d')
+    .sign(key())
+}
+
+export async function verifyUserSession(token: string | undefined): Promise<number | null> {
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, key())
+    if (payload.role !== 'user' || !payload.sub || !/^\d+$/.test(payload.sub)) return null
+    return Number(payload.sub)
+  } catch {
+    return null
+  }
+}
+
 export function checkPassword(input: string): boolean {
   const expected = process.env.ADMIN_PASSWORD
   if (!expected) return false
