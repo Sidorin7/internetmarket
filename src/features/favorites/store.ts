@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { setFavoriteAction } from './actions'
 
 type FavoritesState = {
   ids: number[]
@@ -17,7 +16,9 @@ export const useFavorites = create<FavoritesState>()(
     (set, get) => {
       const push = (id: number, on: boolean) => {
         if (!get().synced) return
-        setFavoriteAction(id, on)
+        // динамический импорт: гостям модуль server action не нужен, а тестам стора — не по силам
+        import('./actions')
+          .then(({ setFavoriteAction }) => setFavoriteAction(id, on))
           .then((ok) => {
             if (!ok) set({ synced: false })
           })
