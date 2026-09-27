@@ -15,11 +15,12 @@ export function FavoritesView() {
   const [items, setItems] = useState<ProductListItem[] | null>(null)
   const key = ids.join(',')
 
-  // вошедший пользователь подтягивает изменения, сделанные на других устройствах
+  // вошедший пользователь подтягивает изменения с других устройств; для гостя action
+  // просто вернёт null. Всегда пробуем, а не только когда synced=true — иначе неудачный
+  // синк при входе (например, сетевой сбой) навсегда оставляет synced=false без повторной попытки
   useEffect(() => {
     if (!hydrated) return
     const store = useFavorites.getState()
-    if (!store.synced) return
     syncFavoritesAction(store.ids)
       .then((serverIds) => (serverIds ? store.replaceFromServer(serverIds) : useFavorites.setState({ synced: false })))
       .catch(() => {})
