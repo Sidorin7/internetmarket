@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { SESSION_COOKIE, USER_COOKIE, verifySession } from '@/lib/session'
+import { SESSION_COOKIE, USER_COOKIE, verifySession, verifyUserSession } from '@/lib/session'
 
 export async function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith('/account')) {
-    // оптимистичная проверка: подпись и пользователя сверяет DAL на каждой странице
-    if (req.cookies.has(USER_COOKIE)) return NextResponse.next()
+    // подпись сверяется здесь же, как и для /admin; DAL на каждой странице — вторая линия защиты
+    if ((await verifyUserSession(req.cookies.get(USER_COOKIE)?.value)) !== null) return NextResponse.next()
     const url = new URL('/login', req.url)
     url.searchParams.set('next', req.nextUrl.pathname)
     return NextResponse.redirect(url)
