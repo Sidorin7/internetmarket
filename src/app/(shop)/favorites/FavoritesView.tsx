@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { ProductGrid } from '@/components/shop/ProductGrid'
 import { getProductsByIdsAction } from '@/features/catalog/actions'
+import { syncFavoritesAction } from '@/features/favorites/actions'
 import type { ProductListItem } from '@/features/catalog/queries'
 import { useFavorites } from '@/features/favorites/store'
 import { useHydrated } from '@/lib/use-hydrated'
@@ -13,6 +14,17 @@ export function FavoritesView() {
   const ids = useFavorites((s) => s.ids)
   const [items, setItems] = useState<ProductListItem[] | null>(null)
   const key = ids.join(',')
+
+  // вошедший пользователь подтягивает изменения с других устройств; для гостя action
+  // просто вернёт null. Всегда пробуем, а не только когда synced=true — иначе неудачный
+  // синк при входе (например, сетевой сбой) навсегда оставляет synced=false без повторной попытки
+  useEffect(() => {
+    if (!hydrated) return
+    const store = useFavorites.getState()
+    syncFavoritesAction(store.ids)
+      .then((serverIds) => (serverIds ? store.replaceFromServer(serverIds) : useFavorites.setState({ synced: false })))
+      .catch(() => {})
+  }, [hydrated])
 
   useEffect(() => {
     if (!hydrated) return

@@ -3,23 +3,26 @@
 import Link from 'next/link'
 import { useActionState } from 'react'
 import { useCartLines } from '../cart/CartView'
+import { LogoutButton } from '@/components/account/LogoutButton'
 import { placeOrder, type CheckoutState } from '@/features/orders/actions'
 import { formatPrice } from '@/lib/money'
 
 const field = 'h-12 w-full rounded-xl border border-line px-4 outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100'
 
-function Field({ name, label, state, ...rest }: { name: string; label: string; state: CheckoutState } & React.InputHTMLAttributes<HTMLInputElement>) {
+function Field({ name, label, state, defaults, ...rest }: { name: string; label: string; state: CheckoutState; defaults?: Record<string, string> } & React.InputHTMLAttributes<HTMLInputElement>) {
   const error = state.fieldErrors?.[name as keyof NonNullable<CheckoutState['fieldErrors']>]?.[0]
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-sm font-semibold">{label}</span>
-      <input name={name} defaultValue={state.values?.[name]} aria-invalid={Boolean(error)} className={`${field} ${error ? 'border-coral-500' : ''}`} {...rest} />
+      <input name={name} defaultValue={state.values?.[name] ?? defaults?.[name]} aria-invalid={Boolean(error)} className={`${field} ${error ? 'border-coral-500' : ''}`} {...rest} />
       {error && <span className="text-sm text-coral-600">{error}</span>}
     </label>
   )
 }
 
-export function CheckoutForm() {
+type Defaults = { name: string; phone: string; email: string; address: string }
+
+export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Defaults; signedIn?: boolean }) {
   const { lines, loading } = useCartLines()
   const [state, action, pending] = useActionState(placeOrder, {})
   const available = lines.filter((l) => l.available)
@@ -38,10 +41,19 @@ export function CheckoutForm() {
     <form action={action} className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <input type="hidden" name="items" value={JSON.stringify(available.map((l) => ({ variantId: l.variantId, qty: l.qty })))} />
       <div className="flex flex-col gap-4 rounded-card border border-line p-5">
-        <Field name="name" label="Имя и фамилия" autoComplete="name" required state={state} />
-        <Field name="phone" label="Телефон" type="tel" autoComplete="tel" placeholder="+7 900 000-00-00" required state={state} />
-        <Field name="email" label="Email — пришлём подтверждение" type="email" autoComplete="email" required state={state} />
-        <Field name="address" label="Адрес доставки" autoComplete="street-address" placeholder="Город, улица, дом, квартира" required state={state} />
+        <Field name="name" label="Имя и фамилия" autoComplete="name" required state={state} defaults={defaults} />
+        <Field name="phone" label="Телефон" type="tel" autoComplete="tel" placeholder="+7 900 000-00-00" required state={state} defaults={defaults} />
+        {signedIn ? (
+          <div className="flex flex-col gap-1.5">
+            <Field name="email" label="Email — заказ появится в личном кабинете" type="email" readOnly state={state} defaults={defaults} className={`${field} bg-surface text-muted`} />
+            <span className="text-sm text-muted">
+              Не вы? <LogoutButton to="/checkout" className="font-semibold text-brand-600">Выйти</LogoutButton>
+            </span>
+          </div>
+        ) : (
+          <Field name="email" label="Email — пришлём подтверждение" type="email" autoComplete="email" required state={state} defaults={defaults} />
+        )}
+        <Field name="address" label="Адрес доставки" autoComplete="street-address" placeholder="Город, улица, дом, квартира" required state={state} defaults={defaults} />
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold">Комментарий</span>
           <textarea name="comment" defaultValue={state.values?.comment} maxLength={500} rows={3} className="w-full rounded-xl border border-line p-4 outline-none focus:border-brand-500" />

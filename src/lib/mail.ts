@@ -111,3 +111,43 @@ export async function sendOrderEmails(o: OrderSummary, opts: { send?: SendFn; se
   failed.forEach((r) => console.error(`[mail] order ${o.number}:`, r.reason))
   return failed.length === 0 && Boolean(sellerEmail)
 }
+
+export function renderLoginCodeEmail(code: string): Rendered {
+  return {
+    subject: `${code} — код для входа в ${SHOP_NAME}`,
+    text: `Ваш код для входа: ${code}\n\nКод действует 10 минут. Если вы его не запрашивали, просто проигнорируйте письмо.`,
+    html: wrap(
+      `<p style="margin:0">Ваш код для входа:</p>` +
+        `<p style="font-size:32px;font-weight:bold;letter-spacing:6px;margin:12px 0">${escapeHtml(code)}</p>` +
+        `<p style="color:#6f6a7d">Код действует 10 минут. Если вы его не запрашивали, просто проигнорируйте письмо.</p>`,
+    ),
+  }
+}
+
+export async function sendLoginCode(email: string, code: string, send: SendFn = smtpSend()): Promise<void> {
+  await send({ to: email, ...renderLoginCodeEmail(code) })
+}
+
+export type CancelledOrder = { number: string; customerName: string; phone: string; total: number }
+
+export function renderCancelEmail(o: CancelledOrder): Rendered {
+  const phone = formatPhone(o.phone)
+  return {
+    subject: `Покупатель отменил заказ №${o.number}`,
+    text: `Покупатель отменил заказ №${o.number} в личном кабинете.\n\n${o.customerName}, ${phone}\nСумма: ${formatPrice(o.total)}\n\nТовары возвращены на склад.`,
+    html: wrap(
+      `<h2 style="margin:0 0 12px">Заказ №${escapeHtml(o.number)} отменён покупателем</h2>` +
+        `<p><b>${escapeHtml(o.customerName)}</b><br><a href="tel:${escapeHtml(o.phone)}">${phone}</a></p>` +
+        `<p>Сумма: <b>${formatPrice(o.total)}</b></p><p style="color:#6f6a7d">Товары возвращены на склад.</p>`,
+    ),
+  }
+}
+
+export async function sendCancelEmail(o: CancelledOrder, opts: { send?: SendFn; sellerEmail?: string } = {}): Promise<void> {
+  const sellerEmail = opts.sellerEmail ?? process.env.SELLER_EMAIL
+  if (!sellerEmail) {
+    console.error('[mail] SELLER_EMAIL is not set')
+    return
+  }
+  await (opts.send ?? smtpSend())({ to: sellerEmail, ...renderCancelEmail(o) })
+}

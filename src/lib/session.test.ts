@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { checkPassword, signSession, verifySession, weakConfigReason } from './session'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { SignJWT } from 'jose'
+import { checkPassword, signSession, signUserSession, verifySession, verifyUserSession, weakConfigReason } from './session'
 
 beforeEach(() => {
   process.env.SESSION_SECRET = 'x'.repeat(40)
@@ -40,5 +41,32 @@ describe('weakConfigReason', () => {
   })
   it('allows placeholders in development', () => {
     expect(weakConfigReason({ NODE_ENV: 'development', SESSION_SECRET: 'replace-with-at-least-32-random-characters-xxxxx', ADMIN_PASSWORD: 'change-me' })).toBeNull()
+  })
+})
+
+describe('user session', () => {
+  it('roundtrips user id', async () => {
+    expect(await verifyUserSession(await signUserSession(42))).toBe(42)
+  })
+  it('does not mix admin and user tokens', async () => {
+    expect(await verifySession(await signUserSession(1))).toBe(false)
+    expect(await verifyUserSession(await signSession())).toBeNull()
+  })
+  it('rejects missing, garbage and non-numeric subjects', async () => {
+    expect(await verifyUserSession(undefined)).toBeNull()
+    expect(await verifyUserSession('garbage')).toBeNull()
+    const key = new TextEncoder().encode(process.env.SESSION_SECRET)
+    const forged = await new SignJWT({ role: 'user' }).setProtectedHeader({ alg: 'HS256' }).setSubject('1 or 1=1').setExpirationTime('1d').sign(key)
+    expect(await verifyUserSession(forged)).toBeNull()
+  })
+  it('does not depend on ADMIN_PASSWORD strength — customer login should not break because of an unrelated admin credential', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    process.env.SESSION_SECRET = 'q'.repeat(20) + 'Zx9-' + 'w'.repeat(24)
+    process.env.ADMIN_PASSWORD = 'change-me'
+    try {
+      expect(await verifyUserSession(await signUserSession(7))).toBe(7)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })
