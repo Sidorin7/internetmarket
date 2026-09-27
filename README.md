@@ -23,6 +23,16 @@ npm test      # unit (vitest)
 npm run e2e   # сценарий покупки (playwright); поднимает свой сервер на :3100 с отдельной БД data/e2e.db
 ```
 
+## Личный кабинет
+
+Покупатель входит по одноразовому коду на email (`/login`), пароля нет — аккаунт создаётся при первом входе.
+В кабинете (`/account`) — все заказы на этот email, включая оформленные до регистрации: текущие со шкалой статуса
+и история; отмена заказа, пока продавец его не подтвердил (продавцу уходит письмо, товар возвращается на склад);
+избранное синхронизируется между устройствами; имя, телефон и адрес подставляются в оформление заказа.
+
+Локально код приходит в Mailpit (http://localhost:8025) и дублируется в консоль `npm run dev`.
+В проде нужен SMTP, который шлёт на любые адреса: Resend с подтверждённым доменом или Gmail (см. `.env.example`).
+
 ## Деплой на Vercel
 
 На Vercel нет постоянного диска, поэтому база живёт в [Turso](https://turso.tech), а фото — в Vercel Blob. Оба сервиса бесплатны на маленьких объёмах.
@@ -42,8 +52,8 @@ npm run e2e   # сценарий покупки (playwright); поднимает
    | `DATABASE_URL`, `DATABASE_AUTH_TOKEN` | из шага 1. Если база подключена через интеграцию Turso в маркетплейсе Vercel, её переменные `TURSO_DATABASE_URL` и `TURSO_AUTH_TOKEN` подхватятся сами |
    | `ADMIN_PASSWORD` | не короче 12 символов |
    | `SESSION_SECRET` | `openssl rand -base64 48` |
-   | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | почтовый ящик, например `smtp.yandex.ru`, `465` и [пароль приложения](https://id.yandex.ru/security/app-passwords) |
-   | `MAIL_FROM` | тот же ящик, что в `SMTP_USER`, например `ЛЁН <shop@yandex.ru>` |
+   | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | [Resend](https://resend.com) по SMTP: `smtp.resend.com`, `587`, `resend` (буквально), API-ключ из resend.com/api-keys |
+   | `MAIL_FROM` | адрес на домене, подтверждённом в Resend (Domains → добавить DNS-записи), например `ЛЁН <shop@ваш-домен.ru>`; без подтверждённого домена письма отклонятся |
    | `SELLER_EMAIL` | куда присылать заказы |
    | `NEXT_PUBLIC_SHOP_NAME` | название магазина |
 

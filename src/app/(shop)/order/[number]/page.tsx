@@ -5,6 +5,7 @@ import { db } from '@/db/client'
 import { getOrderByNumber } from '@/features/orders/queries'
 import { formatPrice } from '@/lib/money'
 import { verifyOrderToken } from '@/lib/order-token'
+import { getCurrentUser } from '@/lib/user'
 import { ClearCart } from './ClearCart'
 
 type Props = { params: Promise<{ number: string }>; searchParams: Promise<{ new?: string; t?: string }> }
@@ -18,6 +19,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const order = await getOrderByNumber(db, number)
   if (!order) notFound()
   const isNew = fresh === '1'
+  const user = await getCurrentUser()
   return (
     <div className="mx-auto max-w-xl rounded-card border border-line p-8 text-center">
       {isNew && <ClearCart />}
@@ -31,6 +33,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
       </ul>
       <p className="mt-4 border-t border-line pt-4 text-right font-display text-xl font-bold">{formatPrice(order.total)}</p>
       <Link href="/" className="mt-6 inline-block rounded-2xl bg-brand-500 px-6 py-3 font-semibold text-white">Продолжить покупки</Link>
+      {user && <Link href={`/account/orders/${order.number}`} className="mt-3 block text-sm font-semibold text-brand-600">Мои заказы</Link>}
     </div>
   )
 }

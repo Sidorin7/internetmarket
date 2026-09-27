@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Heart, ShoppingBag } from 'lucide-react'
+import { Heart, ShoppingBag, UserRound } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { selectCartCount, useCart } from '@/features/cart/store'
 import { useFavorites } from '@/features/favorites/store'
@@ -33,6 +33,10 @@ export function HeaderCounters() {
   const item = 'relative flex flex-col items-center gap-0.5 text-[11px] font-medium text-white/90 hover:text-white'
   return (
     <nav className="flex items-center gap-5">
+      <Link href="/account" className={item}>
+        <UserRound className="size-6" />
+        <span className="hidden sm:block">Профиль</span>
+      </Link>
       <Link href="/favorites" className={item}>
         <span className="relative">
           <Heart className="size-6" />

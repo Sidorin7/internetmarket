@@ -1,4 +1,5 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const categories = sqliteTable('categories', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -52,21 +53,29 @@ export const productVariants = sqliteTable(
 export const ORDER_STATUSES = ['new', 'confirmed', 'shipped', 'cancelled'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 
-export const orders = sqliteTable('orders', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  number: text('number').notNull().unique(),
-  customerName: text('customer_name').notNull(),
-  phone: text('phone').notNull(),
-  email: text('email').notNull(),
-  address: text('address').notNull(),
-  comment: text('comment').notNull().default(''),
-  total: integer('total').notNull(),
-  status: text('status', { enum: ORDER_STATUSES }).notNull().default('new'),
-  emailSent: integer('email_sent', { mode: 'boolean' }).notNull().default(false),
-  createdAt: integer('created_at', { mode: 'timestamp' })
-    .notNull()
-    .$defaultFn(() => new Date()),
-})
+export const orders = sqliteTable(
+  'orders',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    number: text('number').notNull().unique(),
+    customerName: text('customer_name').notNull(),
+    phone: text('phone').notNull(),
+    email: text('email').notNull(),
+    address: text('address').notNull(),
+    comment: text('comment').notNull().default(''),
+    total: integer('total').notNull(),
+    status: text('status', { enum: ORDER_STATUSES }).notNull().default('new'),
+    emailSent: integer('email_sent', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    confirmedAt: integer('confirmed_at', { mode: 'timestamp' }),
+    shippedAt: integer('shipped_at', { mode: 'timestamp' }),
+    cancelledAt: integer('cancelled_at', { mode: 'timestamp' }),
+  },
+  // кабинет ищет заказы по email без учёта регистра
+  (t) => [index('orders_email_lower_idx').on(sql`lower(${t.email})`)],
+)
 
 // productId/variantId обнуляются при удалении товара — снимок title/size/price остаётся
 export const orderItems = sqliteTable('order_items', {
@@ -88,3 +97,40 @@ export const rateLimits = sqliteTable('rate_limits', {
   count: integer('count').notNull(),
   resetAt: integer('reset_at').notNull(),
 })
+
+export const users = sqliteTable('users', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  email: text('email').notNull().unique(),
+  name: text('name').notNull().default(''),
+  phone: text('phone').notNull().default(''),
+  address: text('address').notNull().default(''),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})
+
+export type User = typeof users.$inferSelect
+
+// Одна строка на email: новый запрос кода перезаписывает прежний
+export const loginCodes = sqliteTable('login_codes', {
+  email: text('email').primaryKey(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+})
+
+export const favorites = sqliteTable(
+  'favorites',
+  {
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    productId: integer('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.productId] })],
+)
