@@ -7,12 +7,20 @@ export const SESSION_MAX_AGE = 60 * 60 * 24 * 7
 const PLACEHOLDERS = ['replace-with', 'change-me', 'changeme', 'secret', 'xxxxx']
 
 // Репозиторий публичный: значения из .env.example известны всем, поэтому в проде они запрещены
-export function weakConfigReason(env: Record<string, string | undefined> = process.env): string | null {
+function weakSessionSecretReason(env: Record<string, string | undefined> = process.env): string | null {
   if (env.NODE_ENV !== 'production') return null
   const secret = env.SESSION_SECRET ?? ''
   if (secret.length < 32 || PLACEHOLDERS.some((p) => secret.toLowerCase().includes(p))) {
     return 'SESSION_SECRET не задан или взят из .env.example — сгенерируйте: openssl rand -base64 48'
   }
+  return null
+}
+
+// ADMIN_PASSWORD касается только входа в админку — не должен влиять на сессии покупателей
+export function weakConfigReason(env: Record<string, string | undefined> = process.env): string | null {
+  const secretWeak = weakSessionSecretReason(env)
+  if (secretWeak) return secretWeak
+  if (env.NODE_ENV !== 'production') return null
   const password = env.ADMIN_PASSWORD ?? ''
   if (password.length < 12 || PLACEHOLDERS.some((p) => password.toLowerCase().includes(p))) {
     return 'ADMIN_PASSWORD слишком простой — нужно не меньше 12 символов и не значение из .env.example'
@@ -23,18 +31,21 @@ export function weakConfigReason(env: Record<string, string | undefined> = proce
 function key() {
   const secret = process.env.SESSION_SECRET
   if (!secret || secret.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters')
-  const weak = weakConfigReason()
+  const weak = weakSessionSecretReason()
   if (weak) throw new Error(weak)
   return new TextEncoder().encode(secret)
 }
 
 export async function signSession(): Promise<string> {
+  const weak = weakConfigReason()
+  if (weak) throw new Error(weak)
   return new SignJWT({ role: 'admin' }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('7d').sign(key())
 }
 
 export async function verifySession(token: string | undefined): Promise<boolean> {
   if (!token) return false
   try {
+    if (weakConfigReason()) return false
     const { payload } = await jwtVerify(token, key())
     return payload.role === 'admin'
   } catch {
