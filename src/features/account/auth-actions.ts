@@ -19,9 +19,12 @@ export async function requestCodeAction(_prev: LoginState, formData: FormData): 
   const parsed = emailSchema.safeParse(String(formData.get('email') ?? ''))
   if (!parsed.success) return { step: 'email', error: 'Некорректный email' }
   const email = parsed.data
-  // каждый запрос шлёт письмо на введённый адрес — без лимитов форма станет рассыльщиком
-  const byIp = await hitRateLimit(db, `login-ip:${await clientIp()}`, 10, 60 * MIN)
-  const byEmail = await hitRateLimit(db, `login-email:${email}`, 3, 15 * MIN)
+  // каждый запрос шлёт письмо на введённый адрес — без лимитов форма станет рассыльщиком.
+  // Лимит по email+ip (не по email одному) — иначе кто угодно, зная чужой адрес, мог бы
+  // со своего IP исчерпать его лимит и заблокировать владельцу вход на 15 минут подряд.
+  const ip = await clientIp()
+  const byIp = await hitRateLimit(db, `login-ip:${ip}`, 10, 60 * MIN)
+  const byEmail = await hitRateLimit(db, `login-email:${email}:${ip}`, 3, 15 * MIN)
   if (!byIp.ok || !byEmail.ok) return { step: 'email', email, error: 'Слишком много запросов кода. Попробуйте позже.' }
 
   const code = await issueLoginCode(db, email)
