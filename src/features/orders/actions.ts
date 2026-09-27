@@ -47,7 +47,14 @@ export async function placeOrder(_prev: CheckoutState, formData: FormData): Prom
   const { items, ...customer } = parsed.data
   const result = await createOrder(db, { customer, items })
   if (!result.ok) return { error: result.error, badVariantId: result.variantId, values }
-  if (user) await fillEmptyProfile(db, user.id, { name: customer.name, phone: customer.phone, address: customer.address })
+  // необязательное дозаполнение профиля — сбой здесь не должен «терять» уже созданный заказ
+  if (user) {
+    try {
+      await fillEmptyProfile(db, user.id, { name: customer.name, phone: customer.phone, address: customer.address })
+    } catch (e) {
+      console.error('[order] fillEmptyProfile failed:', e)
+    }
+  }
 
   // письма уходят после ответа: медленный SMTP не должен держать покупателя на «Оформляем…»
   after(async () => {
